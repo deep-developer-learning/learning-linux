@@ -1,0 +1,12 @@
+- Phase 0	🔧 - Linux System Internals	- Core fundamentals: processes, filesystems, namespaces, capabilities — everything container tech builds on
+- Phase 1	⚙️ - Core Component Bootstrapping - Build and run the raw components: etcd, kube-apiserver, kubelet, scheduler, controller-manager, CA
+- Phase 2	🏗️ - Kubernetes the Hard Way - Assemble a full cluster manually: TLS bootstrapping, kubeconfigs, binaries, networking
+- Phase 3	🔍 - Observability & Debugging - Inspect live clusters and nodes: logs, metrics, traces, system state, /proc, strace, top
+- Phase 4	🛡️ - Isolation, Network, Security - Explore cgroups, namespaces, AppArmor/SELinux, kernel isolation, network setups
+- Phase 5	📦 - Container Runtime Internals - Build and run containers from scratch (clone(), pivot_root(), overlayfs) — understand runc and containerd deeply
+- Phase 6	🧪 - Distributed Systems Foundation - Understand etcd, Raft, gossip, leases, leader election — used in K8s core
+- Phase 7	🧠 - Control Plane Engineering - Dive into kube-apiserver, scheduler, and controller-manager — API flow, custom logic, CRDs
+- Phase 8	🧰 - Kubelet, Runtime & Volume Plumbing - Explore CRI, kubelet internals, container startup flow, CNI, volume mounts
+- Phase 9	☸️ - HA Cluster Bootstrapping - Build multi-node, highly available K8s clusters with external etcd, kubeadm-like behavior
+- Phase 10	🛡️-  Runtime Policy & Security Design - Understand PodSecurity, seccomp, AppArmor, admission webhooks, audit logging, and compliance guardrails
+
