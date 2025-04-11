@@ -1,0 +1,53 @@
+############################################
+# Add new user with sudo
+
+
+############################################
+# Install kubelet, kubeadm, kubectl on the nodes
+
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | \
+  gpg --dearmor | sudo tee /etc/apt/keyrings/kubernetes-apt-keyring.gpg > /dev/null
+
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] \
+  https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" | \
+  sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt-get update
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+
+############################################
+sudo apt install vim
+# edit hostname if you cloned the VM by modify ing the file
+sudo vi /etc/hostname 
+# edit the text to node name you want
+
+############################################
+# Restting kubernetes node
+sudo kubeadm reset -f
+
+sudo systemctl stop kubelet
+sudo systemctl stop containerd
+
+sudo rm -rf \
+  /etc/kubernetes \
+  /var/lib/etcd \
+  /var/lib/kubelet \
+  /var/lib/cni \
+  /etc/cni \
+  /opt/cni \
+  /var/run/kubernetes \
+  ~/.kube
+
+sudo reboot
+
+############################################
+
+sudo kubeadm init \
+  --pod-network-cidr=10.244.0.0/16 \
+  --apiserver-advertise-address=$(hostname -I | awk '{print $1}')
+
