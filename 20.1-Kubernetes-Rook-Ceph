@@ -36,3 +36,124 @@ EOF
 kubectl apply -f ceph-cluster.yaml
 
 #################################################
+# Deploy ceph block pool
+cat > ceph-blockpool.yaml << EOF
+# ceph-blockpool.yaml
+apiVersion: ceph.rook.io/v1
+kind: CephBlockPool
+metadata:
+  name: my-pool
+  namespace: rook-ceph
+spec:
+  replicated:
+    size: 3
+EOF
+
+kubectl apply -f ceph-blockpool.yaml
+
+#################################################
+# cat > ceph-storageclass.yaml << EOF
+# apiVersion: storage.k8s.io/v1
+# kind: StorageClass
+# metadata:
+#   name: ceph-block
+# provisioner: rook-ceph.rbd.csi.ceph.com
+# parameters:
+#   pool: my-pool
+#   imageFormat: "2"
+#   imageFeatures: layering
+#   csi.storage.k8s.io/fstype: ext4
+#   clusterID: rook-ceph
+# reclaimPolicy: Delete
+# allowVolumeExpansion: true
+# EOF
+# kubectl apply -f ceph-storageclass.yaml
+
+#################################################
+cat > test-pvc.yaml << EOF
+# test-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ceph-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: ceph-block
+EOF
+kubectl apply -f test-pvc.yaml
+
+#################################################
+cat > test-pod.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ceph-test
+spec:
+  containers:
+    - name: app
+      image: busybox
+      command: ["sleep", "3600"]
+      volumeMounts:
+        - mountPath: /data
+          name: ceph-vol
+  volumes:
+    - name: ceph-vol
+      persistentVolumeClaim:
+        claimName: ceph-pvc
+EOF
+kubectl apply -f test-pod.yaml
+
+################################################
+secret=$(kubectl -n rook-ceph get secret rook-ceph-mon -o jsonpath='{.data.mon-secret}' | base64 -d)
+
+cat > rbd-secret.yaml <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rook-csi-rbd-secret
+  namespace: rook-ceph
+stringData:
+  userID: admin
+  userKey: $secret
+type: kubernetes.io/rbd
+EOF
+
+kubectl apply -f rbd-secret.yaml
+################################################
+
+cat > ceph-storageclass.yaml << EOF
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-block
+provisioner: rook-ceph.rbd.csi.ceph.com
+parameters:
+  clusterID: rook-ceph
+  pool: my-pool
+  imageFormat: "2"
+  imageFeatures: layering
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+  csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+
+EOF
+kubectl apply -f ceph-storageclass.yaml
+
+kubectl -n rook-ceph rollout restart daemonset/csi-rbdplugin-provisioner
+
+
+#################################
+
+kubectl -n rook-ceph exec -it deploy/rook-ceph-tools -- bash
+
+cephOperatorPod=$(sudo kubectl -n rook-ceph get pods | grep operator | awk '{print $1}')
+sudo kubectl -n rook-ceph exec -it rook-ceph-operator-658466c595-dds7c -- cat /etc/ceph/ceph.conf > ceph.conf
+sudo kubectl -n rook-ceph exec -it rook-ceph-operator-658466c595-dds7c -- cat /etc/ceph/keyring > keyring.admin
