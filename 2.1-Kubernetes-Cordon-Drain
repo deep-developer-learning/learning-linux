@@ -1,0 +1,16 @@
+#################################################
+# Cordon Nodes
+kubectl cordon server1
+kubectl cordon server2
+kubectl cordon server3
+
+# Uncordon Nodes
+kubectl uncordon server1
+kubectl uncordon server2
+kubectl uncordon server3
+
+#################################################
+# Drain nodes
+kubectl drain server1 --ignore-daemonsets --force
+kubectl drain server2 --ignore-daemonsets --force
+kubectl drain server3 --ignore-daemonsets --force
