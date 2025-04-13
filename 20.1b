@@ -52,3 +52,81 @@ sudo dd if=/dev/zero of=/dev/sdb1 bs=1M count=10
 lsblk -f /dev/sdb
 
 #######################################################
+# When all pods are running it would look like this:
+ubuntu@KNode1:~/Desktop/rook/deploy/examples$ kubectl get pods -n rook-ceph
+NAME                                                READY   STATUS      RESTARTS   AGE
+csi-cephfsplugin-dsffn                              2/2     Running     0          2m44s
+csi-cephfsplugin-kfbtj                              2/2     Running     0          2m44s
+csi-cephfsplugin-provisioner-698587bff6-5hf6w       5/5     Running     0          2m44s
+csi-cephfsplugin-provisioner-698587bff6-m2bxm       5/5     Running     0          2m44s
+csi-cephfsplugin-vfqcz                              2/2     Running     0          2m44s
+csi-rbdplugin-mwkfp                                 2/2     Running     0          2m44s
+csi-rbdplugin-provisioner-675f75dbf8-fns8q          5/5     Running     0          2m44s
+csi-rbdplugin-provisioner-675f75dbf8-w6dd2          5/5     Running     0          2m44s
+csi-rbdplugin-r4zkm                                 2/2     Running     0          2m44s
+csi-rbdplugin-rp96j                                 2/2     Running     0          2m44s
+rook-ceph-crashcollector-server1-5c5f7f4c75-vt667   1/1     Running     0          82s
+rook-ceph-crashcollector-server2-d54fdd6f4-xgg4l    1/1     Running     0          82s
+rook-ceph-crashcollector-server3-849c55dcdf-kdjgk   1/1     Running     0          92s
+rook-ceph-mgr-a-596db99b76-dgz44                    3/3     Running     0          112s
+rook-ceph-mgr-b-5c8485f847-h27xf                    3/3     Running     0          111s
+rook-ceph-mon-a-6848b6b96d-x6lj9                    2/2     Running     0          2m36s
+rook-ceph-mon-b-5dc97989b6-68h2s                    2/2     Running     0          2m12s
+rook-ceph-mon-c-67684c85c-czbf6                     2/2     Running     0          2m2s
+rook-ceph-operator-88f5fb4b9-hwmkl                  1/1     Running     0          2m55s
+rook-ceph-osd-0-86f4ffc54c-d4vng                    2/2     Running     0          82s
+rook-ceph-osd-1-6f4f4cb5fb-skdf6                    2/2     Running     0          82s
+rook-ceph-osd-2-6c5d7f964f-b54zr                    2/2     Running     0          82s
+rook-ceph-osd-prepare-server1-6sq7w                 0/1     Completed   0          55s
+rook-ceph-osd-prepare-server2-m7gnp                 0/1     Completed   0          52s
+rook-ceph-osd-prepare-server3-d65vb                 0/1     Completed   0          49s
+rook-ceph-tools-74cd88c797-5t96k                    1/1     Running     0          2m46s
+
+#######################################################
+Apply CephBlockPool and Storage class from here:
+https://github.com/rook/rook/blob/release-1.12/deploy/examples/csi/rbd/storageclass.yaml
+
+#######################################################
+Create a test PVC like this: 
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: test-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: rook-ceph-block
+
+#######################################################
+Create a test pod with PVC like this:
+
+# busybox-ceph-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox-ceph
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: busybox-ceph
+  template:
+    metadata:
+      labels:
+        app: busybox-ceph
+    spec:
+      containers:
+        - name: busybox
+          image: busybox
+          command: ["sh", "-c", "sleep 3600"]
+          volumeMounts:
+            - name: ceph-vol
+              mountPath: /data
+      volumes:
+        - name: ceph-vol
+          persistentVolumeClaim:
+            claimName: test-pvc
