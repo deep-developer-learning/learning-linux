@@ -1,0 +1,54 @@
+
+#######################################################
+# Reset ceph related things and reset kubelet
+sudo systemctl stop kubelet
+sudo rm -rf /var/lib/rook/mon*
+sudo rm -rf /var/lib/rook/*mon*
+sudo systemctl start kubelet
+
+#######################################################
+git clone --single-branch --branch v1.12.11 https://github.com/rook/rook.git
+cd rook/deploy/examples
+kubectl apply -f crds.yaml -f common.yaml -f operator.yaml
+
+#######################################################
+# Within the cluster.yaml, we need to add appropriate devices within the nodes section like this:
+Update the following content of the cluster.yaml file like this: 
+    nodes:
+      - name: "server1"
+        devices: # specific devices to use for storage can be specified for each node
+          - name: "sdb"
+      - name: "server2"
+        devices: # specific devices to use for storage can be specified for each node
+          - name: "sdb"
+      - name: "server3"
+        devices: # specific devices to use for storage can be specified for each node
+          - name: "sdb"
+
+
+kubectl apply -f cluster.yaml
+kubectl apply -f toolbox.yaml
+
+#######################################################
+Wait until you see: 
+- Ceph monitor pods start running
+- Mgr pods run
+- Operator pod is running
+- OSD pods get to complete state
+- Tools pod is running
+
+#######################################################
+# Exec into the toolbox pod, execute ceph status
+If the sbb or other sd* device was already used, Ceph will skip using it. The partition needs to be raw without any FSType associated with it.
+Use following comands to clean up the partition:
+
+# wipe out
+sudo wipefs -a /dev/sdb
+
+# zero out first few bytes
+sudo dd if=/dev/zero of=/dev/sdb1 bs=1M count=10
+
+# verify
+lsblk -f /dev/sdb
+
+#######################################################
