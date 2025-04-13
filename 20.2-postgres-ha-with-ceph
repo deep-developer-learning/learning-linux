@@ -30,4 +30,39 @@ sudo sysctl -w fs.inotify.max_user_watches=5242880
 sudo kind create cluster --config kind-cluster2.yaml
 
 ##################################
+mkdir -p ~/.kube
+sudo kind get kubeconfig --name cluster2 > ~/.kube/config
+
+##################################
+# Get Ceph secret key
+
+kubectl -n rook-ceph exec -it deploy/rook-ceph-tools -- ceph auth get-or-create client.k8s mon 'allow r' osd 'allow rwx pool=replicapool'
+
+##################################
+# Create secret in the cluster2
+kubectl create secret generic ceph-secret \
+  --from-literal=key='AQAxWvtnfzmsMxAA6UYt5TiCJcIwmjj/OZJrKQ==' \
+  --namespace=default
+
+##################################
+Create storage class directly on cluster2
+
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ceph-rbd
+provisioner: rook-ceph.rbd.csi.ceph.com
+parameters:
+  clusterID: rook-ceph # must match the rook cluster id
+  pool: replicapool
+  imageFeatures: layering
+  csi.storage.k8s.io/provisioner-secret-name: ceph-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: default
+  csi.storage.k8s.io/node-stage-secret-name: ceph-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: default
+reclaimPolicy: Retain
+volumeBindingMode: Immediate
+
+##################################
+
 
