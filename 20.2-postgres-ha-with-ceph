@@ -23,5 +23,11 @@ nodes:
 
 ##################################
 # Deploy multi node kind cluster
+
+sudo sysctl -w fs.inotify.max_user_instances=10240
+sudo sysctl -w fs.inotify.max_user_watches=5242880
+
 sudo kind create cluster --config kind-cluster2.yaml
+
+##################################
 
