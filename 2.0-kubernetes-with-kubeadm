@@ -66,5 +66,28 @@ sudo cp /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 ############################################
-Install CNI
+# Install CNI
 kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.27.3/manifests/calico.yaml
+
+                                 
+
+
+##################################################
+# Edit the kubelet config file to include following properties:
+sudo vim /var/lib/kubelet/config.yaml
+
+maxPods: 4000
+kubeAPIBurst: 1000
+kubeAPIQPS: 500
+maxOpenFiles: 10000000
+eventBurst: 2000
+eventRecordQPS: 1000
+registryBurst: 50
+registryPullQPS: 20
+
+
+
+sudo systemctl daemon-reexec
+sudo systemctl restart kubelet
+
+
