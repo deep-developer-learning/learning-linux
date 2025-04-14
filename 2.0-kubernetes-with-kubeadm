@@ -85,9 +85,19 @@ eventRecordQPS: 1000
 registryBurst: 50
 registryPullQPS: 20
 
-
-
 sudo systemctl daemon-reexec
 sudo systemctl restart kubelet
 
+##################################################
+Get status on cpu-per-core-usage
 
+mpstat -P ALL 1 1 | awk '
+/^Average/ && $2 ~ /[0-9]+|all/ {
+  if ($2 == "all") {
+    printf "🧠 Total CPU Usage: %.1f%%\n", 100 - $NF
+  } else {
+    printf "🧠 Core %s Usage: %.1f%%\n", $2, 100 - $NF
+  }
+}'
+
+##################################################
