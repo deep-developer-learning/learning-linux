@@ -69,23 +69,3 @@ curl -k -v http://elastic:$password@192.168.1.229:30920
 NOW LETS TEST DUMPING AND RETIEVING
 ##################################################################################################################
 
-NAMESPACE="elastic"
-RELEASE="elasticsearch"
-PORT=30920
-NODEPORT=$PORT
-INDEX="my-index"
-NODE_IP=$(hostname -I | awk '{print $1}')  # adjust if needed
-
-curl -s -XPOST "http://elastic:$password$NODE_IP:$PORT/$INDEX/_doc/1" \
-    -H 'Content-Type: application/json' \
-    --data-binary @es-data/doc1.json
-
-curl -s "http://elastic:$password@$NODE_IP:$PORT/$INDEX/_doc/1" | jq
-curl -s "http://elastic:$password$NODE_IP:$PORT/$INDEX/_doc/2" | jq
-
-
-NODE_IP=$(hostname -I | awk '{print $1}') 
-
-
-
-curl -s http://elastic:$password@$NODE_IP:$PORT/_cat/indices?v
