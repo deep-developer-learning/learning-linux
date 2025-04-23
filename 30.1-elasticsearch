@@ -1,0 +1,91 @@
+#########################################################
+helm repo add elastic https://helm.elastic.co
+helm repo update
+
+#########################################################
+cat > values.es.yaml << EOF
+replicas: 1
+
+tls:
+  selfSignedCertificate:
+    enabled: false
+
+volumeClaimTemplate:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: "rook-ceph-block"  # change if needed
+
+service:
+  type: NodePort
+  ports:
+    - name: http
+      port: 9200
+      nodePort: 30920   # change if needed
+
+esJavaOpts: "-Xms512m -Xmx512m"
+
+resources:
+  requests:
+    cpu: "500m"
+    memory: "1Gi"
+  limits:
+    cpu: "1"
+    memory: "2Gi"
+EOF
+
+#########################################################
+kubectl create namespace elastic
+helm upgrade --install elasticsearch elastic/elasticsearch -n elastic -f values.es.yaml
+
+# You should see this output:
+NAME: elasticsearch
+LAST DEPLOYED: Wed Apr 23 01:41:33 2025
+NAMESPACE: elastic
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Watch all cluster members come up.
+  $ kubectl get pods --namespace=elastic -l app=elasticsearch-master -w
+2. Retrieve elastic user's password.
+  $ kubectl get secrets --namespace=elastic elasticsearch-master-credentials -ojsonpath='{.data.password}' | base64 -d
+3. Test cluster health using Helm test.
+  $ helm --namespace=elastic test elasticsearch
+
+#########################################################
+password=$(kubectl get secrets --namespace=elastic elasticsearch-master-credentials -ojsonpath='{.data.password}' | base64 -d)
+curl -k -v http://elastic:$password@192.168.1.229:30920
+
+#########################################################
+Try this if NodePort insn't working:
+kubectl patch svc elasticsearch-master -n elastic \
+  -p '{"spec": {"type": "NodePort", "ports": [{"port": 9200, "targetPort": 9200, "nodePort": 31688}]}}'
+
+curl -k -v http://elastic:$password@192.168.1.229:30920
+
+##################################################################################################################
+##################################################################################################################
+NOW LETS TEST DUMPING AND RETIEVING
+##################################################################################################################
+
+NAMESPACE="elastic"
+RELEASE="elasticsearch"
+PORT=30920
+NODEPORT=$PORT
+INDEX="my-index"
+NODE_IP=$(hostname -I | awk '{print $1}')  # adjust if needed
+
+curl -s -XPOST "http://elastic:$password$NODE_IP:$PORT/$INDEX/_doc/1" \
+    -H 'Content-Type: application/json' \
+    --data-binary @es-data/doc1.json
+
+curl -s "http://elastic:$password@$NODE_IP:$PORT/$INDEX/_doc/1" | jq
+curl -s "http://elastic:$password$NODE_IP:$PORT/$INDEX/_doc/2" | jq
+
+
+NODE_IP=$(hostname -I | awk '{print $1}') 
+
+
+
+curl -s http://elastic:$password@$NODE_IP:$PORT/_cat/indices?v
