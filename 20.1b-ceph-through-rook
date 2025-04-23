@@ -1,13 +1,34 @@
 ===> GO TO ceph website and see examples.
 
 #######################################################
-# Reset ceph related things and reset kubelet
+# Force delete ceph-rook namespace:
+kubectl get namespace rook-ceph -o json | jq '.spec.finalizers=[]' | kubectl replace --raw "/api/v1/namespaces/rook-ceph/finalize" -f -
+
+#######################################################
+# Exec into the toolbox pod, execute ceph status
+# If the sdb or other sd* device was already used, Ceph will skip using it. 
+# The partition needs to be raw without any FSType associated with it.
+
+# Use following comands to clean up the partition from each nodes where you want OSDs: 
+
+# wipe out
+sudo wipefs -a /dev/sdb
+
+# zero out first few bytes
+sudo dd if=/dev/zero of=/dev/sdb1 bs=1M count=10
+
+# verify
+lsblk -f /dev/sdb
+
+#######################################################
+Resetting  Ceph
+---------------
+# Reset ceph related things and reset kubelet on each node: 
 sudo systemctl stop kubelet
 sudo rm -rf /var/lib/rook/mon*
 sudo rm -rf /var/lib/rook/*mon*
 sudo systemctl start kubelet
-
-#######################################################
+---------------
 git clone --single-branch --branch v1.12.11 https://github.com/rook/rook.git
 cd rook/deploy/examples
 kubectl apply -f crds.yaml -f common.yaml -f operator.yaml
@@ -37,20 +58,6 @@ Wait until you see:
 - Operator pod is running
 - OSD pods get to complete state
 - Tools pod is running
-
-#######################################################
-# Exec into the toolbox pod, execute ceph status
-If the sbb or other sd* device was already used, Ceph will skip using it. The partition needs to be raw without any FSType associated with it.
-Use following comands to clean up the partition:
-
-# wipe out
-sudo wipefs -a /dev/sdb
-
-# zero out first few bytes
-sudo dd if=/dev/zero of=/dev/sdb1 bs=1M count=10
-
-# verify
-lsblk -f /dev/sdb
 
 #######################################################
 # When all pods are running it would look like this:
@@ -84,11 +91,17 @@ rook-ceph-osd-prepare-server3-d65vb                 0/1     Completed   0       
 rook-ceph-tools-74cd88c797-5t96k                    1/1     Running     0          2m46s
 
 #######################################################
+
 Apply CephBlockPool and Storage class from here:
+kubectl apply -f storageclass.yaml
+
+See this as well
 https://github.com/rook/rook/blob/release-1.12/deploy/examples/csi/rbd/storageclass.yaml
 
 #######################################################
 Create a test PVC like this: 
+
+kubectl apply -f rook-ceph-block.yaml
 
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -104,6 +117,8 @@ spec:
 
 #######################################################
 Create a test pod with PVC like this:
+
+kubectl apply -f busybox-ceph-deploy.yaml
 
 # busybox-ceph-deploy.yaml
 apiVersion: apps/v1
